@@ -3,6 +3,7 @@ import cors from 'cors';
 import { exec } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,9 @@ app.use(express.json());
 // Resolve public folder path
 const PUBLIC_DIR = path.resolve(__dirname, '../public');
 
+// Detect operating system
+const isWindows = os.platform() === 'win32';
+
 app.post('/print', (req, res) => {
     const { imagePath } = req.body;
 
@@ -28,10 +32,20 @@ app.post('/print', (req, res) => {
     const fullPath = path.join(PUBLIC_DIR, cleanPath);
 
     console.log(`🖨️  Receiving Print Request: ${fullPath}`);
+    console.log(`📍 Operating System: ${os.platform()}`);
 
-    // Command to print on macOS (uses default printer)
-    // -o fit-to-page: Scales image to fit
-    const command = `lp -o fit-to-page "${fullPath}"`;
+    let command;
+
+    if (isWindows) {
+        // Windows: Use PowerShell to print
+        // This opens the default image viewer and sends to default printer
+        command = `powershell -Command "Start-Process -FilePath '${fullPath.replace(/'/g, "''")}' -Verb Print"`;
+    } else {
+        // macOS/Linux: Use lp command
+        command = `lp -o fit-to-page "${fullPath}"`;
+    }
+
+    console.log(`🔧 Executing: ${command}`);
 
     exec(command, (error, stdout, stderr) => {
         if (error) {
@@ -41,7 +55,7 @@ app.post('/print', (req, res) => {
         if (stderr) {
             console.error(`⚠️ Print Stderr: ${stderr}`);
         }
-        console.log(`✅ Print Job Sent: ${stdout}`);
+        console.log(`✅ Print Job Sent: ${stdout || 'Success'}`);
         res.json({ success: true, message: 'Print job sent successfully' });
     });
 });
