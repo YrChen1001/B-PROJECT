@@ -34,78 +34,75 @@ app.post('/print', (req, res) => {
     console.log(`🖨️  Receiving Print Request: ${fullPath}`);
     console.log(`📍 Operating System: ${os.platform()}`);
 
-    if (isWindows) {
-        // Windows: Use PowerShell to rotate image if needed, then print
-        // This script:
-        // 1. Loads the image
-        // 2. Checks if width > height (landscape)
-        // 3. If so, rotates it 90 degrees
-        // 4. Saves to temp file
-        // 5. Prints with mspaint
-        const psScript = `
-$imagePath = '${fullPath.replace(/'/g, "''")}'
-$tempPath = [System.IO.Path]::GetTempPath() + 'print_temp.png'
+    let command;
 
+    if (isWindows) {
+        // Windows: Use PowerShell to check image orientation and rotate if needed
+        // Then print with mspaint
+        const escapedPath = fullPath.replace(/\\/g, '\\\\').replace(/'/g, "''");
+
+        const psScript = `
 Add-Type -AssemblyName System.Drawing
+$imagePath = '${escapedPath}'
+$tempPath = $env:TEMP + '\\print_temp_' + (Get-Date -Format 'yyyyMMddHHmmss') + '.png'
 
 try {
     $img = [System.Drawing.Image]::FromFile($imagePath)
     
-    # Check if landscape (width > height)
     if ($img.Width -gt $img.Height) {
-        Write-Host "Rotating image from landscape to portrait..."
+        Write-Host 'Rotating landscape to portrait...'
         $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate90FlipNone)
     }
     
     $img.Save($tempPath, [System.Drawing.Imaging.ImageFormat]::Png)
     $img.Dispose()
     
-    Write-Host "Printing from: $tempPath"
-    Start-Process mspaint -ArgumentList "/p `"$tempPath`"" -Wait
+    Write-Host "Printing: $tempPath"
+    Start-Process mspaint -ArgumentList ('/p "' + $tempPath + '"') -Wait
     
-    # Clean up temp file after a delay
-        Start - Sleep - Seconds 3
-        Remove - Item $tempPath - ErrorAction SilentlyContinue
-    } catch {
-        Write - Host "Error: $_"
+    Start-Sleep -Seconds 2
+    Remove-Item $tempPath -ErrorAction SilentlyContinue
+    Write-Host 'Done'
+} catch {
+    Write-Host "Error: $_"
     exit 1
-    }
-    `;
-        
-        const command = `powershell - ExecutionPolicy Bypass - Command "${psScript.replace(/" / g, '\\"').replace(/\n/g, ' ')}"`;
-
-console.log(`🔧 Executing PowerShell script for rotation + print`);
-
-exec(command, { maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
-    if (error) {
-        console.error(`❌ Print Error: ${error.message}`);
-        return res.status(500).json({ error: error.message });
-    }
-    if (stderr) {
-        console.error(`⚠️ Print Stderr: ${stderr}`);
-    }
-    console.log(`📝 PowerShell Output: ${stdout}`);
-    console.log(`✅ Print Job Sent`);
-    res.json({ success: true, message: 'Print job sent successfully' });
-});
-    } else {
-    // macOS/Linux: Use lp command with orientation
-    const command = `lp -o fit-to-page -o portrait "${fullPath}"`;
-
-    console.log(`🔧 Executing: ${command}`);
-
-    exec(command, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`❌ Print Error: ${error.message}`);
-            return res.status(500).json({ error: error.message });
-        }
-        if (stderr) {
-            console.error(`⚠️ Print Stderr: ${stderr}`);
-        }
-        console.log(`✅ Print Job Sent: ${stdout || 'Success'}`);
-        res.json({ success: true, message: 'Print job sent successfully' });
-    });
 }
+`;
+
+        const command = `powershell -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`;
+
+        console.log(`🔧 Executing PowerShell rotation + print script`);
+
+        exec(command, { maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`❌ Print Error: ${error.message}`);
+                return res.status(500).json({ error: error.message });
+            }
+            if (stderr) {
+                console.error(`⚠️ Print Stderr: ${stderr}`);
+            }
+            console.log(`📝 Output: ${stdout}`);
+            console.log(`✅ Print Job Sent`);
+            res.json({ success: true, message: 'Print job sent successfully' });
+        });
+    } else {
+        // macOS/Linux: Use lp command
+        const command = `lp -o fit-to-page "${fullPath}"`;
+
+        console.log(`🔧 Executing: ${command}`);
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`❌ Print Error: ${error.message}`);
+                return res.status(500).json({ error: error.message });
+            }
+            if (stderr) {
+                console.error(`⚠️ Print Stderr: ${stderr}`);
+            }
+            console.log(`✅ Print Job Sent: ${stdout || 'Success'}`);
+            res.json({ success: true, message: 'Print job sent successfully' });
+        });
+    }
 });
 
 app.listen(PORT, () => {
