@@ -37,9 +37,9 @@ app.post('/print', (req, res) => {
     let command;
 
     if (isWindows) {
-        // Windows: Use mspaint (Paint) with /p flag to print
-        // This is the most reliable way to print images on Windows
-        command = `mspaint /p "${fullPath}"`;
+        // Windows: Use PowerShell Start-Process with -Verb Print
+        // This uses the Windows default image handler (Photos app) to print
+        command = `powershell -Command "Start-Process -FilePath '${fullPath.replace(/'/g, "''")}' -Verb Print"`;
     } else {
         // macOS/Linux: Use lp command
         command = `lp -o fit-to-page "${fullPath}"`;
