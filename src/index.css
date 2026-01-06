@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Kaiti TC", "BiauKai", "Noto Serif TC", "Songti TC", serif;
+
+  --color-temple-red: #8B0000;
+  --color-temple-red-light: #C41E3A;
+  --color-imperial-gold: #FFD700;
+  --color-imperial-gold-dark: #DAA520;
+  --color-incense-yellow: #FFF8DC;
+  --color-wood: #8B4513;
+  --color-paper: #F5E6CAB0;
+}
+
+:root {
+  font-family: var(--font-serif);
+  background-color: var(--color-temple-red);
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.1) 0%, transparent 60%),
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.05) 0px, rgba(0, 0, 0, 0.05) 2px, transparent 2px, transparent 10px);
+  color: var(--color-incense-yellow);
+}
+
+/* Custom Print Styles for Silent Printing */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #print-area,
+  #print-area * {
+    visibility: visible;
+  }
+
+  #print-area {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    z-index: 9999;
+  }
+
+  /* Ensure image covers the page */
+  #print-area img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* or cover depending on requirement */
+  }
+}
+
+/* Scrollbar styling */
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-imperial-gold-dark);
+  border-radius: 4px;
+}
+
+@keyframes floatText {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 0.1;
+  }
+
+  50% {
+    transform: translateY(-50px) rotate(5deg);
+    opacity: 0.2;
+  }
+
+  80% {
+    opacity: 0.1;
+  }
+
+  100% {
+    transform: translateY(-100px) rotate(-5deg);
+    opacity: 0;
+  }
+}
+
+.floating-text {
+  position: absolute;
+  font-weight: bold;
+  color: var(--color-imperial-gold);
+  pointer-events: none;
+  user-select: none;
+  writing-mode: vertical-rl;
+  animation: floatText 15s infinite linear;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.floating-text:nth-child(2n) {
+  animation-duration: 20s;
+  animation-delay: 5s;
+}
+
+.floating-text:nth-child(3n) {
+  animation-duration: 12s;
+  animation-delay: 2s;
+}
