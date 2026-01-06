@@ -37,9 +37,8 @@ app.post('/print', (req, res) => {
     let command;
 
     if (isWindows) {
-        // Windows: Use mspaint (Paint) with /p flag to print
-        // This is the most reliable way to print images on Windows
-        command = `mspaint /p "${fullPath}"`;
+        // Windows: Use rundll32 with shimgvw.dll (same as right-click -> Print on image file)
+        command = `rundll32.exe C:\\Windows\\System32\\shimgvw.dll,ImageView_PrintTo "${fullPath}" "${fullPath}"`;
     } else {
         // macOS/Linux: Use lp command
         command = `lp -o fit-to-page "${fullPath}"`;
