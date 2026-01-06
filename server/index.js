@@ -34,16 +34,63 @@ app.post('/print', (req, res) => {
     console.log(`🖨️  Receiving Print Request: ${fullPath}`);
     console.log(`📍 Operating System: ${os.platform()}`);
 
-    let command;
-
     if (isWindows) {
-        // Windows: Use mspaint (Paint) with /p flag to print
-        // This is the most reliable way to print images on Windows
-        command = `mspaint /p "${fullPath}"`;
-    } else {
-        // macOS/Linux: Use lp command
-        command = `lp -o fit-to-page "${fullPath}"`;
+        // Windows: Use PowerShell to rotate image if needed, then print
+        // This script:
+        // 1. Loads the image
+        // 2. Checks if width > height (landscape)
+        // 3. If so, rotates it 90 degrees
+        // 4. Saves to temp file
+        // 5. Prints with mspaint
+        const psScript = `
+$imagePath = '${fullPath.replace(/'/g, "''")}'
+$tempPath = [System.IO.Path]::GetTempPath() + 'print_temp.png'
+
+Add-Type -AssemblyName System.Drawing
+
+try {
+    $img = [System.Drawing.Image]::FromFile($imagePath)
+    
+    # Check if landscape (width > height)
+    if ($img.Width -gt $img.Height) {
+        Write-Host "Rotating image from landscape to portrait..."
+        $img.RotateFlip([System.Drawing.RotateFlipType]::Rotate90FlipNone)
     }
+    
+    $img.Save($tempPath, [System.Drawing.Imaging.ImageFormat]::Png)
+    $img.Dispose()
+    
+    Write-Host "Printing from: $tempPath"
+    Start-Process mspaint -ArgumentList "/p `"$tempPath`"" -Wait
+    
+    # Clean up temp file after a delay
+        Start - Sleep - Seconds 3
+        Remove - Item $tempPath - ErrorAction SilentlyContinue
+    } catch {
+        Write - Host "Error: $_"
+    exit 1
+    }
+    `;
+        
+        const command = `powershell - ExecutionPolicy Bypass - Command "${psScript.replace(/" / g, '\\"').replace(/\n/g, ' ')}"`;
+
+console.log(`🔧 Executing PowerShell script for rotation + print`);
+
+exec(command, { maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+    if (error) {
+        console.error(`❌ Print Error: ${error.message}`);
+        return res.status(500).json({ error: error.message });
+    }
+    if (stderr) {
+        console.error(`⚠️ Print Stderr: ${stderr}`);
+    }
+    console.log(`📝 PowerShell Output: ${stdout}`);
+    console.log(`✅ Print Job Sent`);
+    res.json({ success: true, message: 'Print job sent successfully' });
+});
+    } else {
+    // macOS/Linux: Use lp command with orientation
+    const command = `lp -o fit-to-page -o portrait "${fullPath}"`;
 
     console.log(`🔧 Executing: ${command}`);
 
@@ -58,6 +105,7 @@ app.post('/print', (req, res) => {
         console.log(`✅ Print Job Sent: ${stdout || 'Success'}`);
         res.json({ success: true, message: 'Print job sent successfully' });
     });
+}
 });
 
 app.listen(PORT, () => {
